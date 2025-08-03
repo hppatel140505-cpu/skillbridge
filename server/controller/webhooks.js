@@ -1,5 +1,5 @@
 import { Webhook } from "svix"
-import User from "../models/User.js"
+import User from "../model/User.js"
 
 // API Controller Function to Manage Clerk User With database 
 
@@ -24,7 +24,7 @@ export const clerkWebhooks = async (req, res) => {
                     imageUrl: data.imageUrl,
                 }
                 await User.create(userData)
-                res.JSON({})
+                res.json({})
                   break;
             }
                 
@@ -35,13 +35,13 @@ export const clerkWebhooks = async (req, res) => {
                     imageUrl: data.imageUrl,
                 }
                 await User.findByIdAndUpdate(data.id,userData)
-                res.JSON({})
+                res.json({})
                 break;
             }
 
-            case 'user.deteted':{
+            case 'user.deleted':{
                 await User.findByIdAndDelete(data.id)
-                res.JSON({})
+                res.json({})
                 break;
             }
 
@@ -50,6 +50,6 @@ export const clerkWebhooks = async (req, res) => {
         }
 
     } catch (error) {
-        res.JSON({success:false,message:error.message})
+        res.json({success:false,message:error.message})
     }
 }

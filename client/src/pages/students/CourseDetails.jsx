@@ -19,7 +19,7 @@ const CourseDetails = () => {
 
   const [courseData, setCourseData] = useState(null);
   const [openSections, setOpenSections] = useState({});
-  const [isAlreadyEnrolled, setIsAlreadyEnrolled] = useState(false);
+  const [isAlreadyEnrolled] = useState(false);
   const [playerData,setPlayerDate] = useState(null)
 
   useEffect(() => {

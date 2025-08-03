@@ -6,7 +6,6 @@ import {Link} from 'react-router-dom'
 
 const Navbar = () => {
 
-  const educatorData = dummyEducatorData
   const { user } = useUser()
 
   return (
