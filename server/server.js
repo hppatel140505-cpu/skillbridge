@@ -12,10 +12,11 @@ await connectDB()
 
 // Middlewares 
 app.use(cors())
+app.use(express.json())
 
 // Routes 
 app.get('/',(req,res)=>res.send("API working"))
-app.post('/clerk',express.json(), clerkWebhooks)
+app.post('/api/webhooks/clerk', clerkWebhooks)
 
 //Port
 const PORT = process.env.PORT || 5000
