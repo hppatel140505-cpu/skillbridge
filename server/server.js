@@ -18,6 +18,11 @@ app.use(express.json())
 app.get('/',(req,res)=>res.send("API working"))
 app.post('/api/webhooks/clerk', clerkWebhooks)
 
+// Test endpoint to verify webhook is accessible
+app.get('/api/webhooks/test', (req, res) => {
+    res.json({ message: 'Webhook endpoint is accessible' })
+})
+
 //Port
 const PORT = process.env.PORT || 5000
 

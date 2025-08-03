@@ -5,7 +5,10 @@ import User from "../model/User.js"
 
 export const clerkWebhooks = async (req, res) => {
     try {
-        console.log('Webhook received:', req.body.type)
+        console.log('=== WEBHOOK CALLED ===')
+        console.log('Headers:', Object.keys(req.headers))
+        console.log('Body type:', req.body.type)
+        console.log('Body data:', JSON.stringify(req.body, null, 2))
         
         const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET)
 
@@ -33,12 +36,14 @@ export const clerkWebhooks = async (req, res) => {
             }
                 
             case 'user.updated':{
+                console.log('Updating user:', data.id)
                 const userData={
-                    email: data.email_address[0].email_address,
+                    email: data.email_addresses[0].email_address,
                     name: data.first_name + " " + data.last_name,
                     imageUrl: data.imageUrl,
                 }
                 await User.findByIdAndUpdate(data.id,userData)
+                console.log('User updated successfully:', data.id)
                 res.json({})
                 break;
             }
