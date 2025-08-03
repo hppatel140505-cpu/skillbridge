@@ -17,6 +17,7 @@ export const clerkWebhooks = async (req, res) => {
 
         switch (type) {
             case 'user.created':{
+                console.log('Creating user:', data.id)
                 const userData={
                     _id : data.id,
                     email: data.email_addresses[0].email_address,
@@ -24,13 +25,14 @@ export const clerkWebhooks = async (req, res) => {
                     imageUrl: data.imageUrl,
                 }
                 await User.create(userData)
+                console.log('User created successfully:', data.id)
                 res.json({})
                   break;
             }
                 
-            case 'user.update':{
+            case 'user.updated':{
                 const userData={
-                    email: data.email_address[0].email_address,
+                    email: data.email_addresses[0].email_address,
                     name: data.first_name + " " + data.last_name,
                     imageUrl: data.imageUrl,
                 }
@@ -50,6 +52,7 @@ export const clerkWebhooks = async (req, res) => {
         }
 
     } catch (error) {
-        res.json({success:false,message:error.message})
+        console.error('Webhook error:', error.message)
+        res.status(500).json({success:false,message:error.message})
     }
 }
