@@ -38,7 +38,7 @@ export const clerkWebhooks = async (req, res) => {
             case 'user.updated':{
                 console.log('Updating user:', data.id)
                 const userData={
-                    email: data.email_addresses[0].email_address,
+                    email: data.email_address[0].email_address,
                     name: data.first_name + " " + data.last_name,
                     imageUrl: data.imageUrl,
                 }
@@ -59,11 +59,6 @@ export const clerkWebhooks = async (req, res) => {
         }
 
     } catch (error) {
-        console.error('Webhook error:', error.message)
-        if (error.message.includes('Invalid signature')) {
-            console.error('Webhook signature verification failed')
-            return res.status(401).json({success:false,message:'Invalid webhook signature'})
-        }
-        res.status(500).json({success:false,message:error.message})
+       res.json({success:false,message:error.message})
     }
 }
