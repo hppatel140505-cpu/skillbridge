@@ -4,29 +4,24 @@ import 'dotenv/config'
 import connectDB from './configs/mongodb.js'
 import { clerkWebhooks } from './controller/webhooks.js'
 
-// Initialize Express 
 const app = express()
 
-// Connect to database
+// Connect to MongoDB
 await connectDB()
 
-// Middlewares 
+// Middleware
 app.use(cors())
 app.use(express.json())
 
-// Routes 
-app.get('/',(req,res)=>res.send("API working"))
+// Routes
+app.get('/', (req, res) => res.send('API is working'))
 app.post('/api/webhooks/clerk', clerkWebhooks)
-
-// Test endpoint to verify webhook is accessible
-app.get('/api/webhooks/test', (req, res) => {
-    res.json({ message: 'Webhook endpoint is accessible' })
+app.get('/users', async (req, res) => {
+  const users = await import('./model/User.js').then(mod => mod.default.find())
+  res.json(users)
 })
 
-//Port
 const PORT = process.env.PORT || 5000
-
-app.listen(PORT,()=>{
-    console.log(`server is running on port ${PORT}`);
-
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
 })
