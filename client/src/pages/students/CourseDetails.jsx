@@ -5,28 +5,77 @@ import Loading from "../../components/students/Loading";
 import { assets } from "../../assets/assets";
 import humanizeDuration from "humanize-duration";
 import YouTube from "react-youtube";
+import { toast } from "react-toastify";
+import axios from "axios";
 
 const CourseDetails = () => {
   const { id } = useParams();
   const {
-    allCourses,
     calculateRating,
     calculateChapterTime,
     calculateCourseDuration,
     calculateNoOfLectures,
     currency,
+    backendUrl,
+    userData,
+    getToken,
   } = useContext(AppContext);
 
   const [courseData, setCourseData] = useState(null);
   const [openSections, setOpenSections] = useState({});
-  const [isAlreadyEnrolled] = useState(false);
-  const [playerData,setPlayerDate] = useState(null)
+  const [isAlreadyEnrolled, setIsAlreadyEnrolled] = useState(false);
+  const [playerData, setPlayerData] = useState(null);
+
+  const fetchCourseData = async () => {
+    try {
+      const { data } = await axios.get(`${backendUrl}/api/course/${id}`);
+      if (data.success) {
+        setCourseData(data.courseData);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const enrollCourse = async () => {
+    try {
+      if (!userData) {
+        return toast.warn("Login to Enroll");
+      }
+      if (isAlreadyEnrolled) {
+        return toast.warn("Already Enrolled");
+      }
+
+      const token = await getToken();
+
+      const { data } = await axios.post(
+        `${backendUrl}/api/user/purchase`,
+        { courseId: courseData._id },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (data.success) {
+        const { session_url } = data;
+        window.location.replace(session_url);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
 
   useEffect(() => {
-    if (!allCourses?.length || !id) return;
-    const foundCourse = allCourses.find((c) => c._id === id);
-    setCourseData(foundCourse || null);
-  }, [allCourses, id]);
+    fetchCourseData();
+  }, [id]);
+
+  useEffect(() => {
+    if (userData && courseData) {
+      setIsAlreadyEnrolled(userData.enrollCourse?.includes(courseData._id));
+    }
+  }, [userData, courseData]);
 
   const toggleSection = (index) => {
     setOpenSections((prev) => ({ ...prev, [index]: !prev[index] }));
@@ -136,9 +185,14 @@ const CourseDetails = () => {
                       </div>
                       <div className="flex gap-2 text-xs md:text-sm text-gray-500">
                         {lecture.isPreviewFree && (
-                          <span onClick={()=>setPlayerDate({
-                            videoId: lecture.lectureUrl.split('/').pop()
-                          })} className="text-blue-500 cursor-pointer">
+                          <span
+                            onClick={() =>
+                              setPlayerData({
+                                videoId: lecture.lectureUrl.split("/").pop(),
+                              })
+                            }
+                            className="text-blue-500 cursor-pointer"
+                          >
                             Preview
                           </span>
                         )}
@@ -172,19 +226,19 @@ const CourseDetails = () => {
 
       {/* Right section */}
       <div className="w-full sm:w-[420px] rounded overflow-hidden shadow-[0_4px_15px_2px_rgba(0,0,0,0.1)] bg-white">
-        
-        {
-          playerData ? 
-          <YouTube videoId={playerData.videoId} opts={{playerVars:{
-            autoplay:1 }}} iframeClassName="w-full aspect-video"/>
-         : <img
+        {playerData ? (
+          <YouTube
+            videoId={playerData.videoId}
+            opts={{ playerVars: { autoplay: 1 } }}
+            iframeClassName="w-full aspect-video"
+          />
+        ) : (
+          <img
             src={courseData.courseThumbnail}
             alt="Course Thumbnail"
             className="w-full h-56 object-cover rounded-t"
           />
-
-        }
-        
+        )}
 
         {/* Time left */}
         <div className="flex items-center gap-2 p-4 py-3 border-t">
@@ -232,7 +286,10 @@ const CourseDetails = () => {
         </div>
 
         {/* Enroll button */}
-        <button className="w-full py-3  bg-orange-400 text-white font-medium rounded-md hover:bg-orange-500 transition">
+        <button
+          onClick={enrollCourse}
+          className="w-full py-3 bg-orange-400 text-white font-medium rounded-md hover:bg-orange-500 transition"
+        >
           {isAlreadyEnrolled ? "Already Enrolled" : "Enroll Now"}
         </button>
 
