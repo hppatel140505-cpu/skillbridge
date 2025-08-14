@@ -10,6 +10,7 @@ import axios from "axios";
 
 const CourseDetails = () => {
   const { id } = useParams();
+
   const {
     calculateRating,
     calculateChapterTime,
@@ -20,6 +21,9 @@ const CourseDetails = () => {
     userData,
     getToken,
   } = useContext(AppContext);
+
+  console.log("useParams id:", id);
+  console.log("Fetching:", `${backendUrl}/api/course/${id}`);
 
   const [courseData, setCourseData] = useState(null);
   const [openSections, setOpenSections] = useState({});

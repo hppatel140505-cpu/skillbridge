@@ -8,7 +8,8 @@ import axios from "axios";
 import { toast } from "react-toastify";
 
 export const AppContextProvider = (props) => {
-  const backedUrl = import.meta.env.VITE_BACKEND_URL;
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
 
   const currency = import.meta.env.VITE_CURRENCY || "$";
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ export const AppContextProvider = (props) => {
   // Fetch all courses
   const fetchAllCourses = async () => {
     try {
-      const { data } = await axios.get(backedUrl + "/api/course/all");
+      const { data } = await axios.get(backendUrl + "/api/course/all");
 
       if (data.success) {
         setAllCourses(data.courses);
@@ -44,7 +45,7 @@ export const AppContextProvider = (props) => {
 
     try {
       const token = await getToken();
-      const { data } = await axios.get(backedUrl + "/api/user/data", {
+      const { data } = await axios.get(backendUrl + "/api/user/data", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -105,7 +106,7 @@ export const AppContextProvider = (props) => {
     try {
       const token = await getToken();
       const { data } = await axios.get(
-        backedUrl + "/api/user/enrolled-courses",
+        backendUrl + "/api/user/enrolled-courses",
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -142,7 +143,7 @@ export const AppContextProvider = (props) => {
     calculateCourseDuration,
     calculateNoOfLectures,
     fetchUserEnrolledCourses,
-    backedUrl,
+    backendUrl,
     userData,
     setUserData,
     getToken,
