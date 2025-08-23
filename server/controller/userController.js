@@ -3,6 +3,7 @@ import { Purchase } from "../model/Purchase.js"
 import Stripe from "stripe"
 import Course from "../model/Course.js"
 import { courseProgress } from "../model/CourseProgress.js"
+import { clerkClient } from "@clerk/express"
 
 
 export const getUserData = async (req, res) => {
@@ -27,7 +28,22 @@ export const getUserData = async (req, res) => {
 export const userEnrolledCourses = async (req, res) => {
   try {
     const userId = req.auth.userId;
-    const userData = await User.findById(userId).populate('enrolledCourses');
+    let userData = await User.findById(userId).populate('enrolledCourses');
+
+    // If user doesn't exist in database, create them
+    if (!userData) {
+      // Get user info from Clerk
+      const clerkUser = await clerkClient.users.getUser(userId);
+      
+      // Create new user in database
+      userData = await User.create({
+        _id: userId,
+        name: clerkUser.firstName + ' ' + clerkUser.lastName,
+        email: clerkUser.emailAddresses[0].emailAddress,
+        imageUrl: clerkUser.imageUrl,
+        enrolledCourses: []
+      });
+    }
 
     res.json({ success: true, enrolledCourses: userData.enrolledCourses });
   } catch (error) {
@@ -107,7 +123,7 @@ export const updateUserCourseProgress = async (req, res) => {
         return res.json({ success: true, message: 'Lecture Already Completed' })
       }
 
-      progressDatarogressData.lectureCompleted.push(lectureId)
+      progressData.lectureCompleted.push(lectureId)
       await progressData.save()
     } else {
       await courseProgress.create({

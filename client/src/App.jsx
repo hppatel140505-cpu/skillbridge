@@ -15,7 +15,6 @@ import Navbar from './components/students/Navbar'
 import 'quill/dist/quill.snow.css';
 import { ToastContainer } from 'react-toastify';
 
-
 const App = () => {
 
  const isEducatorRoute = useMatch('/educator/*')

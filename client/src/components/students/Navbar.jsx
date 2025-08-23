@@ -9,7 +9,7 @@ import { toast } from 'react-toastify'
 const Navbar = () => {
 
 
-const {navigate , isEducator, backedUrl, setIsEducator , getToken } = useContext(AppContext)
+const {navigate , isEducator, backendUrl, setIsEducator , getToken } = useContext(AppContext)
 
 const isCourseListPage = location.pathname.includes('/course-list');
 
@@ -26,7 +26,7 @@ const becomeEducator = async () => {
 
     const token = await getToken();
     const { data } = await axios.get(
-      `${backedUrl}/api/educator/update-role`,
+      `${backendUrl}/api/educator/update-role`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
