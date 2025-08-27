@@ -1,27 +1,32 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { AppContext } from "../../context/AppContext";
-import {Line} from 'rc-progress'
+import { Line } from "rc-progress";
 
 const MyEnrollments = () => {
-  const { enrolledCourses, calculateCourseDuration,navigate } = useContext(AppContext);
-  
-  const [progressArray, setProgressArray] = useState([
-    {lectureCompleted :2, totalLectures:4},
-    {lectureCompleted :1, totalLectures:5},
-    {lectureCompleted :3, totalLectures:6},
-    {lectureCompleted :4, totalLectures:4},
-    {lectureCompleted :0, totalLectures:3},
-    {lectureCompleted :5, totalLectures:7},
-    {lectureCompleted :6, totalLectures:8},
-    {lectureCompleted :2, totalLectures:6},
-    {lectureCompleted :4, totalLectures:10},
-    {lectureCompleted :3, totalLectures:5},
-    {lectureCompleted :7, totalLectures:7},
-    {lectureCompleted :1, totalLectures:4},
-    {lectureCompleted :0, totalLectures:2},
-    {lectureCompleted :5, totalLectures:5},
+  const { enrolledCourses, calculateCourseDuration, navigate, fetchUserEnrolledCourses } =
+    useContext(AppContext);
 
-  ])
+  const [progressArray, setProgressArray] = useState([
+    { lectureCompleted: 2, totalLectures: 4 },
+    { lectureCompleted: 1, totalLectures: 5 },
+    { lectureCompleted: 3, totalLectures: 6 },
+    { lectureCompleted: 4, totalLectures: 4 },
+    { lectureCompleted: 0, totalLectures: 3 },
+    { lectureCompleted: 5, totalLectures: 7 },
+    { lectureCompleted: 6, totalLectures: 8 },
+    { lectureCompleted: 2, totalLectures: 6 },
+    { lectureCompleted: 4, totalLectures: 10 },
+    { lectureCompleted: 3, totalLectures: 5 },
+    { lectureCompleted: 7, totalLectures: 7 },
+    { lectureCompleted: 1, totalLectures: 4 },
+    { lectureCompleted: 0, totalLectures: 2 },
+    { lectureCompleted: 5, totalLectures: 5 },
+  ]);
+
+  // 🔑 required: re-fetch enrolled courses when this page loads
+  useEffect(() => {
+    fetchUserEnrolledCourses();
+  }, []);
 
   return (
     <div className="md:px-36 px-4 pt-10">
@@ -56,21 +61,37 @@ const MyEnrollments = () => {
                     <p className="font-semibold text-gray-800">
                       {course.courseTitle}
                     </p>
-                    <Line strokeWidh={2} percent={progressArray[index] ? (progressArray[index].lectureCompleted*100)/
-                      progressArray[index].totalLectures : 0 } className='bg-gray-300 rounded-full' />
+                    <Line
+                      strokeWidth={2}
+                      percent={
+                        progressArray[index]
+                          ? (progressArray[index].lectureCompleted * 100) /
+                            progressArray[index].totalLectures
+                          : 0
+                      }
+                      className="bg-gray-300 rounded-full"
+                    />
                   </div>
                 </td>
                 <td className="px-6 py-4 text-gray-600">
                   {calculateCourseDuration(course)}
                 </td>
                 <td className="px-6 py-4 text-gray-600">
-                  {progressArray[index] && `${progressArray[index].lectureCompleted}/${progressArray[index].totalLectures} `} <span>
-                  Lectures</span>
+                  {progressArray[index] &&
+                    `${progressArray[index].lectureCompleted}/${progressArray[index].totalLectures}`}{" "}
+                  <span>Lectures</span>
                 </td>
                 <td className="px-6 py-4">
-                  <button onClick={()=>navigate(`/player/${course._id}`)} className="px-3 sm:px-5 py-1.5 sm:py-2 bg-orange-400 max-sm:text-xs text-white rounded-full">
-                    {progressArray[index] && progressArray[index].lectureCompleted/progressArray[index].totalLectures == 1 ? 'completed' : 'On Going'}
-                    
+                  <button
+                    onClick={() => navigate(`/player/${course._id}`)}
+                    className="px-3 sm:px-5 py-1.5 sm:py-2 bg-orange-400 max-sm:text-xs text-white rounded-full"
+                  >
+                    {progressArray[index] &&
+                    progressArray[index].lectureCompleted /
+                      progressArray[index].totalLectures ==
+                      1
+                      ? "completed"
+                      : "On Going"}
                   </button>
                 </td>
               </tr>

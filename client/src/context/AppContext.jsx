@@ -10,7 +10,6 @@ import { toast } from "react-toastify";
 export const AppContextProvider = (props) => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-
   const currency = import.meta.env.VITE_CURRENCY || "$";
   const navigate = useNavigate();
 
@@ -55,6 +54,7 @@ export const AppContextProvider = (props) => {
         toast.error(data.message);
       }
     } catch (error) {
+      console.error("❌ Error in fetchUserData:", error);
       toast.error(error.message);
     }
   };
@@ -116,6 +116,7 @@ export const AppContextProvider = (props) => {
         toast.error(data.message);
       }
     } catch (error) {
+      console.error("❌ Error in fetchUserEnrolledCourses:", error);
       toast.error(error.message);
     }
   };
