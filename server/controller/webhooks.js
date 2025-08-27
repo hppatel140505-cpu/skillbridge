@@ -1,9 +1,12 @@
+// controller/webhooks.js
 import { Webhook } from "svix";
 import User from "../model/User.js";
 import "dotenv/config.js";
 import Stripe from "stripe";
 import { Purchase } from "../model/Purchase.js";
 import Course from "../model/Course.js";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // ===================== CLERK WEBHOOK ===================== //
 export const clerWebhooks = async (req, res) => {
@@ -59,98 +62,72 @@ export const clerWebhooks = async (req, res) => {
 };
 
 // ===================== STRIPE WEBHOOK ===================== //
-const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY);
-
 export const stripeWebhooks = async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
 
   try {
-    event = Stripe.webhooks.constructEvent(
-      req.body,
+    // ✅ FIX: use req.rawBody instead of req.body
+    event = stripe.webhooks.constructEvent(
+      req.rawBody,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
+    console.log("✅ Stripe Event Verified:", event.type);
   } catch (err) {
-    console.error("Webhook signature verification failed:", err.message);
+    console.error("❌ Webhook signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   try {
     switch (event.type) {
-      // ✅ PAYMENT SUCCESS
-      case "payment_intent.succeeded": {
-        const paymentIntent = event.data.object;
-        const paymentIntentId = paymentIntent.id;
+      // ✅ Payment completed immediately
+      case "checkout.session.completed":
+      // ✅ Payment completed asynchronously (UPI, netbanking, wallets, etc.)
+      case "checkout.session.async_payment_succeeded": {
+        const session = event.data.object;
+        const { purchaseId, userId, courseId } = session.metadata;
 
-        // Find checkout session linked to payment
-        const sessionList = await stripeInstance.checkout.sessions.list({
-          payment_intent: paymentIntentId,
-        });
+        console.log("✅ Payment Success Event:", event.type, purchaseId);
 
-        if (!sessionList.data.length) {
-          return res.status(404).send("No session found");
-        }
-
-        const session = sessionList.data[0];
-        const { purchaseId } = session.metadata;
-
-        // Update purchase entry
         const purchaseData = await Purchase.findById(purchaseId);
-        if (!purchaseData) {
-          return res.status(404).send("Purchase not found");
-        }
+        if (!purchaseData) break;
 
-        const userData = await User.findById(purchaseData.userId);
-        const courseData = await Course.findById(purchaseData.courseId);
+        const userData = await User.findById(userId);
+        const courseData = await Course.findById(courseId);
 
         if (userData && courseData) {
-          // add course to user
-          if (!userData.enrolledCourses.includes(courseData._id)) {
-            userData.enrolledCourses.push(courseData._id);
+          if (!userData.enrolledCourses.includes(courseId)) {
+            userData.enrolledCourses.push(courseId);
             await userData.save();
           }
-
-          // add student to course
-          if (!courseData.enrolledStudents.includes(userData._id)) {
-            courseData.enrolledStudents.push(userData._id);
+          if (!courseData.enrolledStudents.includes(userId)) {
+            courseData.enrolledStudents.push(userId);
             await courseData.save();
           }
         }
 
         purchaseData.status = "completed";
         await purchaseData.save();
-
         break;
       }
 
-      // ❌ PAYMENT FAILED
+      // ❌ Payment failed
+      case "checkout.session.async_payment_failed":
       case "payment_intent.payment_failed": {
-        const paymentIntent = event.data.object;
-        const paymentIntentId = paymentIntent.id;
+        const session = event.data.object;
+        const { purchaseId } = session.metadata || {};
 
-        const sessionList = await stripeInstance.checkout.sessions.list({
-          payment_intent: paymentIntentId,
-        });
+        console.log("❌ Payment Failed Event:", event.type, purchaseId);
 
-        if (!sessionList.data.length) {
-          return res.status(404).send("No session found");
+        if (purchaseId) {
+          await Purchase.findByIdAndUpdate(purchaseId, { status: "failed" });
         }
-
-        const session = sessionList.data[0];
-        const { purchaseId } = session.metadata;
-
-        const purchaseData = await Purchase.findById(purchaseId);
-        if (purchaseData) {
-          purchaseData.status = "failed";
-          await purchaseData.save();
-        }
-
         break;
       }
 
       default:
-        console.log(`Unhandled event type ${event.type}`);
+        console.log(`⚠️ Unhandled event type ${event.type}`);
     }
 
     res.json({ received: true });

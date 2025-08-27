@@ -75,7 +75,7 @@ export const purchaseCourse = async (req, res) => {
       status: "pending"
     })
 
-    const currency = process.env.CURRENCY.toLowerCase()
+    const currency = process.env.CURRENCY?.toLowerCase() || "usd"
 
     const session = await stripeInstance.checkout.sessions.create({
       success_url: `${origin}/loading/my-enrollments`,
@@ -85,7 +85,7 @@ export const purchaseCourse = async (req, res) => {
           price_data: {
             currency,
             product_data: { name: courseData.courseTitle },
-            unit_amount: Math.floor(amount * 100),
+            unit_amount: Math.floor(amount * 100), // cents/paise
           },
           quantity: 1,
         },
@@ -223,61 +223,69 @@ export const clerWebhooks = async (req, res) => {
 
 // ===================== STRIPE WEBHOOK ===================== //
 export const stripeWebhooks = async (req, res) => {
-  const sig = req.headers["stripe-signature"]
-  let event
+  const sig = req.headers["stripe-signature"];
+  let event;
 
   try {
-    event = Stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET)
+    // ✅ rawBody use karna hai, req.body nahi
+    event = Stripe.webhooks.constructEvent(
+      req.rawBody, 
+      sig, 
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
   } catch (err) {
-    console.error("Webhook signature verification failed:", err.message)
-    return res.status(400).send(`Webhook Error: ${err.message}`)
+    console.error("❌ Webhook signature verification failed:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   try {
     switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object
-        const { purchaseId, userId, courseId } = session.metadata
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
+        const session = event.data.object;
+        const { purchaseId, userId, courseId } = session.metadata;
 
-        const purchaseData = await Purchase.findById(purchaseId)
-        if (!purchaseData) break
+        const purchaseData = await Purchase.findById(purchaseId);
+        if (!purchaseData) break;
 
-        const userData = await User.findById(userId)
-        const courseData = await Course.findById(courseId)
+        if (purchaseData.status === "completed") break; // idempotent
+
+        const userData = await User.findById(userId);
+        const courseData = await Course.findById(courseId);
 
         if (userData && courseData) {
           if (!userData.enrolledCourses.includes(courseId)) {
-            userData.enrolledCourses.push(courseId)
-            await userData.save()
+            userData.enrolledCourses.push(courseId);
+            await userData.save();
           }
           if (!courseData.enrolledStudents.includes(userId)) {
-            courseData.enrolledStudents.push(userId)
-            await courseData.save()
+            courseData.enrolledStudents.push(userId);
+            await courseData.save();
           }
         }
 
-        purchaseData.status = "completed"
-        await purchaseData.save()
-        break
+        purchaseData.status = "completed";
+        await purchaseData.save();
+        break;
       }
 
       case "checkout.session.async_payment_failed":
       case "payment_intent.payment_failed": {
-        const session = event.data.object
-        const { purchaseId } = session.metadata || {}
+        const session = event.data.object;
+        const { purchaseId } = session.metadata || {};
         if (purchaseId) {
-          await Purchase.findByIdAndUpdate(purchaseId, { status: "failed" })
+          await Purchase.findByIdAndUpdate(purchaseId, { status: "failed" });
         }
-        break
+        break;
       }
 
       default:
-        console.log(`Unhandled event type ${event.type}`)
+        console.log(`⚠️ Unhandled event type ${event.type}`);
     }
 
-    res.json({ received: true })
+    res.json({ received: true });
   } catch (error) {
-    console.error("Webhook processing failed:", error.message)
-    res.status(500).json({ error: error.message })
+    console.error("Webhook processing failed:", error.message);
+    res.status(500).json({ error: error.message });
   }
-}
+};
