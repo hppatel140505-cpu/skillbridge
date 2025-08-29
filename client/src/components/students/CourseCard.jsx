@@ -4,11 +4,17 @@ import { AppContext } from "../../context/AppContext";
 import { Link } from "react-router-dom";
 
 const CourseCard = ({ course }) => {
-  const { currency, calculateRating } = useContext(AppContext);
+  const { currency, calculateRating, enrolledCourses } = useContext(AppContext);
+  console.log("Enrolled Courses:", enrolledCourses);
 
   // Safe checks
   const rating = course ? calculateRating(course) : 0;
   const reviewCount = course?.courseRatings?.length || 0;
+
+  // ✅ Compare with String() to handle ObjectId vs string mismatch
+  const isEnrolled = enrolledCourses?.some(
+    (enrolled) => String(enrolled._id) === String(course?._id)
+  );
 
   return (
     <Link
@@ -50,16 +56,20 @@ const CourseCard = ({ course }) => {
           <p className="text-gray-500 text-xs">({reviewCount})</p>
         </div>
 
-        {/* Price */}
-        <p className="text-base font-semibold text-gray-800">
-          {currency}
-          {course
-            ? (
-                course.coursePrice -
-                (course.discount * course.coursePrice) / 100
-              ).toFixed(2)
-            : "0.00"}
-        </p>
+        {/* Price or Enrolled Status */}
+        {isEnrolled ? (
+          <p className="text-green-600 font-semibold">Already Enrolled</p>
+        ) : (
+          <p className="text-base font-semibold text-gray-800">
+            {currency}
+            {course
+              ? (
+                  course.coursePrice -
+                  (course.discount * course.coursePrice) / 100
+                ).toFixed(2)
+              : "0.00"}
+          </p>
+        )}
       </div>
     </Link>
   );

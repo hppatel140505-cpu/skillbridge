@@ -112,6 +112,7 @@ export const AppContextProvider = (props) => {
       );
 
       if (data.success) {
+        console.log("API Response enrolledCourses:", data.enrolledCourses);
         setEnrolledCourses(data.enrolledCourses.reverse());
       } else {
         toast.error(data.message);

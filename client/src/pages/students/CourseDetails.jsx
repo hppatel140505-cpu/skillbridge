@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { AppContext } from "../../context/AppContext";
 import Loading from "../../components/students/Loading";
 import { assets } from "../../assets/assets";
@@ -10,6 +10,7 @@ import axios from "axios";
 
 const CourseDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const {
     calculateRating,
@@ -20,10 +21,8 @@ const CourseDetails = () => {
     backendUrl,
     userData,
     getToken,
+    enrolledCourses,
   } = useContext(AppContext);
-
-  console.log("useParams id:", id);
-  console.log("Fetching:", `${backendUrl}/api/course/${id}`);
 
   const [courseData, setCourseData] = useState(null);
   const [openSections, setOpenSections] = useState({});
@@ -48,8 +47,9 @@ const CourseDetails = () => {
       if (!userData) {
         return toast.warn("Login to Enroll");
       }
+
       if (isAlreadyEnrolled) {
-        return toast.warn("Already Enrolled");
+        return navigate("/my-enrollments");
       }
 
       const token = await getToken();
@@ -76,10 +76,13 @@ const CourseDetails = () => {
   }, [id]);
 
   useEffect(() => {
-    if (userData && courseData) {
-      setIsAlreadyEnrolled(userData.enrollCourse?.includes(courseData._id));
+    if (userData && courseData && enrolledCourses) {
+      const already = enrolledCourses.some(
+        (enrolled) => String(enrolled._id) === String(courseData._id)
+      );
+      setIsAlreadyEnrolled(already);
     }
-  }, [userData, courseData]);
+  }, [userData, courseData, enrolledCourses]);
 
   const toggleSection = (index) => {
     setOpenSections((prev) => ({ ...prev, [index]: !prev[index] }));
@@ -292,7 +295,11 @@ const CourseDetails = () => {
         {/* Enroll button */}
         <button
           onClick={enrollCourse}
-          className="w-full py-3 bg-orange-400 text-white font-medium rounded-md hover:bg-orange-500 transition"
+          className={`w-full py-3 text-white font-medium rounded-md transition ${
+            isAlreadyEnrolled
+              ? "bg-orange-500 hover:bg-orange-700"
+              : "bg-orange-400 hover:bg-orange-500"
+          }`}
         >
           {isAlreadyEnrolled ? "Already Enrolled" : "Enroll Now"}
         </button>
