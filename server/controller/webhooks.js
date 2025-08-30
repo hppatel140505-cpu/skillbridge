@@ -67,56 +67,86 @@ export const stripeWebhooks = async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
 
+  console.log("👉 Stripe Webhook called");
+  console.log("Headers:", req.headers);
+  console.log("Raw Body (first 200 chars):", req.body?.toString().slice(0, 200));
+
   try {
     // Stripe requires rawBody, not parsed JSON
     event = stripe.webhooks.constructEvent(
-      req.body, // if you used express.raw()
+      req.body, // express.raw() should give Buffer
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
+    console.log("✅ Webhook signature verified");
   } catch (err) {
     console.error("❌ Webhook signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   try {
+    console.log("👉 Event received:", event.type);
+
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object;
+        console.log("👉 Checkout Session Completed event:", session);
+
+        if (!session.metadata) {
+          console.error("⚠️ Missing metadata in session!");
+          break;
+        }
+
         const { purchaseId, userId, courseId } = session.metadata;
+        console.log("👉 Metadata:", { purchaseId, userId, courseId });
 
         const purchaseData = await Purchase.findById(purchaseId);
-        if (!purchaseData) break;
-        if (purchaseData.status === "completed") break; // idempotent
+        console.log("👉 Purchase Data:", purchaseData);
+
+        if (!purchaseData) {
+          console.error("❌ Purchase not found in DB");
+          break;
+        }
+        if (purchaseData.status === "completed") {
+          console.log("⚠️ Purchase already completed, skipping update");
+          break;
+        }
 
         const userData = await User.findById(userId);
         const courseData = await Course.findById(courseId);
+
+        console.log("👉 User Data:", userData?._id);
+        console.log("👉 Course Data:", courseData?._id);
 
         if (userData && courseData) {
           if (!userData.enrolledCourses.includes(courseId)) {
             userData.enrolledCourses.push(courseId);
             await userData.save();
+            console.log("✅ User enrolled in course");
           }
           if (!courseData.enrolledStudents.includes(userId)) {
             courseData.enrolledStudents.push(userId);
             await courseData.save();
+            console.log("✅ Course updated with new student");
           }
         }
 
         purchaseData.status = "completed";
         await purchaseData.save();
-        console.log("✅ Payment success DB updated");
+        console.log("✅ Purchase marked as completed in DB");
         break;
       }
 
       case "checkout.session.async_payment_failed":
       case "payment_intent.payment_failed": {
         const session = event.data.object;
+        console.log("👉 Payment Failed Event:", session);
+
         const { purchaseId } = session.metadata || {};
         if (purchaseId) {
           await Purchase.findByIdAndUpdate(purchaseId, { status: "failed" });
+          console.log(`❌ Purchase ${purchaseId} marked as failed`);
         }
-        console.log("❌ Payment failed DB updated");
         break;
       }
 
@@ -126,7 +156,7 @@ export const stripeWebhooks = async (req, res) => {
 
     res.status(200).json({ received: true });
   } catch (error) {
-    console.error("Webhook processing failed:", error.message);
+    console.error("❌ Webhook processing failed:", error);
     res.status(500).json({ error: error.message });
   }
 };
