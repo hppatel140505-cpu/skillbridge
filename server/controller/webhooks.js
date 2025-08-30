@@ -62,18 +62,18 @@ export const clerWebhooks = async (req, res) => {
 };
 
 // ===================== STRIPE WEBHOOK ===================== //
+// ===================== STRIPE WEBHOOK ===================== //
 export const stripeWebhooks = async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
 
   try {
-    // ✅ FIX: use req.rawBody instead of req.body
+    // Stripe requires rawBody, not parsed JSON
     event = stripe.webhooks.constructEvent(
-      req.rawBody,
+      req.body, // if you used express.raw()
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
-    console.log("✅ Stripe Event Verified:", event.type);
   } catch (err) {
     console.error("❌ Webhook signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -81,17 +81,13 @@ export const stripeWebhooks = async (req, res) => {
 
   try {
     switch (event.type) {
-      // ✅ Payment completed immediately
-      case "checkout.session.completed":
-      // ✅ Payment completed asynchronously (UPI, netbanking, wallets, etc.)
-      case "checkout.session.async_payment_succeeded": {
+      case "checkout.session.completed": {
         const session = event.data.object;
         const { purchaseId, userId, courseId } = session.metadata;
 
-        console.log("✅ Payment Success Event:", event.type, purchaseId);
-
         const purchaseData = await Purchase.findById(purchaseId);
         if (!purchaseData) break;
+        if (purchaseData.status === "completed") break; // idempotent
 
         const userData = await User.findById(userId);
         const courseData = await Course.findById(courseId);
@@ -109,28 +105,26 @@ export const stripeWebhooks = async (req, res) => {
 
         purchaseData.status = "completed";
         await purchaseData.save();
+        console.log("✅ Payment success DB updated");
         break;
       }
 
-      // ❌ Payment failed
       case "checkout.session.async_payment_failed":
       case "payment_intent.payment_failed": {
         const session = event.data.object;
         const { purchaseId } = session.metadata || {};
-
-        console.log("❌ Payment Failed Event:", event.type, purchaseId);
-
         if (purchaseId) {
           await Purchase.findByIdAndUpdate(purchaseId, { status: "failed" });
         }
+        console.log("❌ Payment failed DB updated");
         break;
       }
 
       default:
-        console.log(`⚠️ Unhandled event type ${event.type}`);
+        console.log(`⚠️ Unhandled event type: ${event.type}`);
     }
 
-    res.json({ received: true });
+    res.status(200).json({ received: true });
   } catch (error) {
     console.error("Webhook processing failed:", error.message);
     res.status(500).json({ error: error.message });
