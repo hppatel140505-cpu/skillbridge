@@ -64,7 +64,7 @@ export const stripeWebhooks = async (req, res) => {
   console.log("Raw Body (first 200 chars):", req.body?.toString().slice(0, 200));
 
   try {
-    // ✅ use rawBody, not parsed JSON
+    // ✅ Stripe requires rawBody (Buffer)
     event = stripe.webhooks.constructEvent(
       req.body, // express.raw() should give Buffer
       sig,
@@ -80,16 +80,28 @@ export const stripeWebhooks = async (req, res) => {
     console.log("👉 Event received:", event.type);
 
     switch (event.type) {
-      // Checkout session completed
       case "checkout.session.completed":
-      case "checkout.session.async_payment_succeeded": {
+      case "checkout.session.async_payment_succeeded":
+      case "payment_intent.succeeded": {
         const session = event.data.object;
-        const { purchaseId, userId, courseId } = session.metadata || {};
+        console.log("👉 Payment succeeded event:", session);
 
-        if (!purchaseId) break;
+        if (!session.metadata) {
+          console.error("⚠️ Missing metadata in session!");
+          break;
+        }
 
+        const { purchaseId, userId, courseId } = session.metadata;
         const purchaseData = await Purchase.findById(purchaseId);
-        if (!purchaseData || purchaseData.status === "completed") break;
+        if (!purchaseData) {
+          console.error("❌ Purchase not found in DB");
+          break;
+        }
+
+        if (purchaseData.status === "completed") {
+          console.log("⚠️ Purchase already completed, skipping update");
+          break;
+        }
 
         const userData = await User.findById(userId);
         const courseData = await Course.findById(courseId);
@@ -98,10 +110,12 @@ export const stripeWebhooks = async (req, res) => {
           if (!userData.enrolledCourses.includes(courseId)) {
             userData.enrolledCourses.push(courseId);
             await userData.save();
+            console.log("✅ User enrolled in course");
           }
           if (!courseData.enrolledStudents.includes(userId)) {
             courseData.enrolledStudents.push(userId);
             await courseData.save();
+            console.log("✅ Course updated with new student");
           }
         }
 
@@ -111,41 +125,11 @@ export const stripeWebhooks = async (req, res) => {
         break;
       }
 
-      // payment_intent succeeded (handle separately)
-      case "payment_intent.succeeded": {
-        const session = event.data.object;
-        const { purchaseId, userId, courseId } = session.metadata || {};
-
-        if (!purchaseId) break;
-
-        const purchaseData = await Purchase.findById(purchaseId);
-        if (!purchaseData || purchaseData.status === "completed") break;
-
-        purchaseData.status = "completed";
-        await purchaseData.save();
-
-        const userData = await User.findById(userId);
-        const courseData = await Course.findById(courseId);
-
-        if (userData && courseData) {
-          if (!userData.enrolledCourses.includes(courseId)) {
-            userData.enrolledCourses.push(courseId);
-            await userData.save();
-          }
-          if (!courseData.enrolledStudents.includes(userId)) {
-            courseData.enrolledStudents.push(userId);
-            await courseData.save();
-          }
-        }
-
-        console.log("✅ Payment succeeded via payment_intent.succeeded, DB updated");
-        break;
-      }
-
-      // Payment failed events
       case "checkout.session.async_payment_failed":
       case "payment_intent.payment_failed": {
         const session = event.data.object;
+        console.log("👉 Payment failed event:", session);
+
         const { purchaseId } = session.metadata || {};
         if (purchaseId) {
           await Purchase.findByIdAndUpdate(purchaseId, { status: "failed" });
