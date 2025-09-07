@@ -5,7 +5,7 @@ const Companies = () => {
   return (
     <div className="bg-white pt-1 pb-15 text-center">
       <p className="text-gray-500 text-sm md:text-base font-medium">
-        Trusted by learners from
+        Upskill here, succeed anywhere
       </p>
 
       <div className="mt-5 md:mt-10 flex flex-wrap justify-center items-center gap-6 md:gap-16">
