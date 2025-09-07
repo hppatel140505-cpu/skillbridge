@@ -137,3 +137,49 @@ export const getEnrolledStudentData = async (req, res) => {
         res.json({ success: false, message: error.message });
     }
 };
+
+// controller/educatorController.js
+export const uploadLectureVideo = async (req, res) => {
+  try {
+    const videoFile = req.file;
+    if (!videoFile) {
+      return res.json({ success: false, message: "Video file not attached" });
+    }
+
+    // Cloudinary me video upload
+    const uploadResult = await cloudinary.uploader.upload(videoFile.path, {
+      resource_type: "video",
+      folder: "lectures",
+    });
+
+    res.json({
+      success: true,
+      message: "Lecture video uploaded successfully",
+      videoUrl: uploadResult.secure_url,
+      duration: uploadResult.duration, // optional
+    });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+};
+
+export const addLectureToCourse = async (req, res) => {
+  try {
+    const { courseId, chapterId, lectureData } = req.body;
+    // lectureData: { lectureId, lectureTitle, lectureUrl, isPreviewFree, lectureOrder, lectureDuration }
+
+    const course = await Course.findById(courseId);
+    if (!course) return res.json({ success: false, message: "Course not found" });
+
+    const chapter = course.courseContent.find(ch => ch.chapterId === chapterId);
+    if (!chapter) return res.json({ success: false, message: "Chapter not found" });
+
+    chapter.chapterContent.push(lectureData);
+    await course.save();
+
+    res.json({ success: true, message: "Lecture added to course", lecture: lectureData });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+};
+
