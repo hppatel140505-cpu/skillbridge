@@ -3,14 +3,27 @@ import { AppContext } from "../../context/AppContext";
 import Loading from "../../components/students/Loading";
 
 const MyCourses = () => {
-  const { currency, allCourses } = useContext(AppContext);
+  const { allCourses } = useContext(AppContext);
   const [courses, setCourses] = useState([]);
+
+  // Currency formatter for INR
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
   useEffect(() => {
     if (allCourses && allCourses.length > 0) {
       setCourses(allCourses);
     }
   }, [allCourses]);
+
+  if (!allCourses) {
+    return <Loading />;
+  }
 
   return courses.length > 0 ? (
     <div className="h-screen flex flex-col items-start justify-between md:p-8 md:pb-0 p-4 pt-8 pb-0">
@@ -23,38 +36,49 @@ const MyCourses = () => {
                 <th className="px-4 py-3 font-semibold truncate">All Courses</th>
                 <th className="px-4 py-3 font-semibold truncate">Earnings</th>
                 <th className="px-4 py-3 font-semibold truncate">Students</th>
-                <th className="px-4 py-3 font-semibold truncate">Publishes</th>
+                <th className="px-4 py-3 font-semibold truncate">Published</th>
               </tr>
             </thead>
             <tbody className="text-sm text-gray-500">
-              {courses.map((course) => (
-                <tr key={course._id} className="border-b border-gray-500/20">
-                  <td className="md:px-4 pl-2 md:pl-4 py-3 flex items-center space-x-3 truncate">
-                    <img src={course.courseThumbnail} alt="" className="w-16" />
-                    <span className="truncate hidden md:block">{course.courseTitle}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {currency}{" "}
-                    {Math.floor(
-                      (course.enrolledStudent?.length || 0) *
-                      (course.coursePrice - (course.courseDiscount * course.coursePrice) / 100)
-                    )}
-                  </td>
-                  <td className="px-4 py-3">{course.enrolledStudent?.length || 0}</td>
-                  <td className="px-4 py-3">
-                    {course.createdAt
-                      ? new Date(course.createdAt).toLocaleDateString()
-                      : "N/A"}
-                  </td>
-                </tr>
-              ))}
+              {courses.map((course) => {
+                const studentCount = course.enrolledStudents?.length || 0;
+                const earnings =
+                  studentCount *
+                  (course.coursePrice -
+                    (course.courseDiscount * course.coursePrice) / 100);
+
+                return (
+                  <tr
+                    key={course._id}
+                    className="border-b border-gray-500/20 hover:bg-gray-50"
+                  >
+                    <td className="md:px-4 pl-2 md:pl-4 py-3 flex items-center space-x-3 truncate">
+                      <img
+                        src={course.courseThumbnail}
+                        alt=""
+                        className="w-16 rounded"
+                      />
+                      <span className="truncate">{course.courseTitle}</span>
+                    </td>
+                    <td className="px-4 py-3">{formatCurrency(earnings)}</td>
+                    <td className="px-4 py-3">{studentCount}</td>
+                    <td className="px-4 py-3">
+                      {course.createdAt
+                        ? new Date(course.createdAt).toLocaleDateString()
+                        : "N/A"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
     </div>
   ) : (
-    <Loading />
+    <div className="flex items-center justify-center h-screen">
+      <p className="text-gray-500">No courses published yet.</p>
+    </div>
   );
 };
 
